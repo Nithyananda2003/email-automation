@@ -2,6 +2,7 @@ services:
   - type: web
     name: email-portal-automation
     env: node
+    nodeVersion: 18
     plan: free
     region: oregon
     branch: main
