@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email → Portal Automation</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f1f5f9;--muted:#94a3b8;--primary:#6366f1;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;padding:20px}
+.shell{max-width:1300px;margin:0 auto}
+header{background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:18px 24px;border-radius:12px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+header h1{font-size:20px;font-weight:700}
+header p{font-size:13px;opacity:.8;margin-top:2px}
+.tabs{display:flex;gap:4px;margin-bottom:16px}
+.tab{padding:8px 20px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;border:none;background:var(--card);color:var(--muted);transition:.2s}
+.tab.active{background:var(--primary);color:#fff}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px}
+.card h2{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase}
+input,select{width:100%;padding:8px 10px;background:#0f172a;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+input:focus,select:focus{border-color:var(--primary)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.btn{padding:8px 18px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.2s}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#4f46e5}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#16a34a}
+.btn-red{background:var(--red);color:#fff}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px}
+.alert-ok{background:#14532d33;border:1px solid var(--green);color:var(--green)}
+.alert-err{background:#7f1d1d33;border:1px solid var(--red);color:var(--red)}
+.alert-info{background:#1e3a5f33;border:1px solid #60a5fa;color:#93c5fd}
+.table-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;min-width:800px}
+th{padding:10px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);background:#0f172a;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #1e293b;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#ffffff08}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.tag-c{background:#1e3a5f;color:#60a5fa}.tag-t{background:#2d1b69;color:#a78bfa}
+.pill{background:var(--primary)33;color:var(--primary);padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700}
+#log{background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:14px;max-height:260px;overflow-y:auto;font-family:monospace;font-size:12px;line-height:1.7}
+.log-ok{color:var(--green)}.log-err{color:var(--red)}.log-info{color:#60a5fa}.log-skip{color:var(--yellow)}
+.spin{display:inline-block;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 18px;display:flex;align-items:center;gap:10px}
+.stat strong{font-size:22px;color:var(--primary)}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <div style="font-size:28px">🤖</div>
+  <div><h1>Email → Portal Automation</h1><p>Fetch emails → extract file numbers → lookup on portals → export Excel</p></div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('email')">📧 Step 1: Fetch Emails</button>
+  <button class="tab" onclick="showTab('portal')">🔍 Step 2: Portal Lookup</button>
+  <button class="tab" onclick="showTab('files')">📁 Downloads</button>
+</div>
+
+<!-- ═══ TAB 1: EMAIL ═══ -->
+<div id="tab-email" class="panel active">
+
+  <div class="card">
+    <h2>⚙️ IMAP Configuration</h2>
+    <div class="g3" style="margin-bottom:12px">
+      <div><label>IMAP Host</label><input id="host" placeholder="imap.gmail.com"></div>
+      <div><label>Port</label><input id="port" type="number" value="993"></div>
+      <div><label>Encryption</label><select id="enc"><option value="ssl">SSL (993)</option><option value="tls">TLS (143)</option><option value="none">None</option></select></div>
+    </div>
+    <div class="g2" style="margin-bottom:12px">
+      <div><label>Email / Username</label><input id="user" type="email" placeholder="orders@company.com"></div>
+      <div><label>Password</label><input id="pass" type="password" placeholder="••••••••"></div>
+    </div>
+    <div class="g3" style="margin-bottom:14px">
+      <div><label>Folder</label><input id="folder" value="INBOX"></div>
+      <div><label>Default Customer ID</label><input id="cust_id" placeholder="e.g. cus25"></div>
+      <div><label>Default Delivery Email</label><input id="del_email" type="email"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="saveConfig()">💾 Save Settings</button>
+      <button class="btn" style="background:#334155;color:#fff" onclick="testConn()">🔌 Test Connection</button>
+    </div>
+    <div id="cfg-msg" style="margin-top:10px"></div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Fetch Date</label>
+      <input type="date" id="fetchDate" style="width:180px">
+    </div>
+    <button class="btn btn-primary" id="fetchBtn" onclick="fetchEmails()">📥 Fetch Emails</button>
+    <button class="btn btn-red btn-sm" onclick="clearOrders()">🗑 Clear All</button>
+    <button class="btn btn-green btn-sm" onclick="dlCsv()" id="dlCsvBtn" disabled>⬇️ Download CSV</button>
+  </div>
+  <div id="fetch-msg" style="margin-bottom:12px"></div>
+
+  <div class="stats" id="stats" style="display:none">
+    <div class="stat"><strong id="s-total">0</strong><span>Emails Parsed</span></div>
+    <div class="stat"><strong id="s-cypress" style="color:#60a5fa">0</strong><span>→ Cypress</span></div>
+    <div class="stat"><strong id="s-trusro" style="color:#a78bfa">0</strong><span>→ TrueConcept/TrustPro</span></div>
+  </div>
+
+  <div class="card" id="email-table-card" style="display:none">
+    <h2>📋 Parsed Email Orders <span class="pill" id="order-count">0</span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>File Number</th><th>Portal</th><th>Street Address</th><th>Zipcode</th><th>Service Code</th><th>Customer ID</th><th>Borrower</th><th>From</th><th></th></tr></thead>
+        <tbody id="order-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:14px;text-align:center">
+      <button class="btn btn-primary" onclick="showTab('portal');startLookup()" id="lookupBtn">🔍 Look Up on Portals →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 2: PORTAL ═══ -->
+<div id="tab-portal" class="panel">
+  <div class="card">
+    <h2>🔍 Portal Lookup</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:14px">File numbers starting with <b>T</b> or <b>TP</b> → TrueConcept/TrustPro &nbsp;|&nbsp; All others → Cypress</p>
+    <button class="btn btn-primary" id="runBtn" onclick="startLookup()">▶ Run Portal Lookup</button>
+    <span id="run-status" style="margin-left:12px;font-size:13px;color:var(--muted)"></span>
+  </div>
+
+  <div class="card">
+    <h2>📡 Live Progress</h2>
+    <div id="log"><span style="color:var(--muted)">Waiting to start…</span></div>
+  </div>
+
+  <div id="results-card" class="card" style="display:none">
+    <h2>✅ Results <span class="pill" id="res-count">0</span></h2>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <a id="dl-excel" href="#" class="btn btn-green" style="text-decoration:none">📊 Download Excel</a>
+      <a id="dl-csv2"  href="#" class="btn" style="text-decoration:none;background:#334155;color:#fff">📄 Download CSV</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>File Number</th><th>Street Address</th><th>Zipcode</th><th>Parcel #</th><th>Service Code</th><th>Customer ID</th><th>Borrower</th></tr></thead>
+        <tbody id="res-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 3: FILES ═══ -->
+<div id="tab-files" class="panel">
+  <div class="card">
+    <h2>📁 Recent Downloads</h2>
+    <div id="file-list">Loading…</div>
+  </div>
+</div>
+
+</div>
+<script>
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(t){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.querySelectorAll('.tab')[{email:0,portal:1,files:2}[t]].classList.add('active');
+  if(t==='files') loadFiles();
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
+async function loadConfig(){
+  try{
+    const d=await fetch('/api/config').then(r=>r.json());
+    document.getElementById('host').value=d.host||'';
+    document.getElementById('port').value=d.port||993;
+    document.getElementById('enc').value=d.encryption||'ssl';
+    document.getElementById('user').value=d.user||'';
+    document.getElementById('folder').value=d.folder||'INBOX';
+    document.getElementById('cust_id').value=d.default_customer_id||'';
+    document.getElementById('del_email').value=d.default_delivery_email||'';
+  }catch(e){}
+}
+async function saveConfig(){
+  const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    host:document.getElementById('host').value,
+    port:parseInt(document.getElementById('port').value),
+    encryption:document.getElementById('enc').value,
+    user:document.getElementById('user').value,
+    pass:document.getElementById('pass').value,
+    folder:document.getElementById('folder').value,
+    default_customer_id:document.getElementById('cust_id').value,
+    default_delivery_email:document.getElementById('del_email').value
+  })}).then(r=>r.json());
+  showMsg('cfg-msg',r.message,r.success);
+}
+async function testConn(){
+  await saveConfig();
+  showMsg('cfg-msg','Testing…',true,'info');
+  const r=await fetch('/api/test-connection',{method:'POST'}).then(r=>r.json());
+  showMsg('cfg-msg',r.message,r.success);
+}
+
+// ── Email Fetch ───────────────────────────────────────────────────────────────
+let orders=[];
+async function fetchEmails(){
+  const btn=document.getElementById('fetchBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spin">⟳</span> Fetching…';
+  showMsg('fetch-msg','Connecting to mailbox…',true,'info');
+  try{
+    const r=await fetch('/api/fetch',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({date:document.getElementById('fetchDate').value})}).then(r=>r.json());
+    showMsg('fetch-msg',(r.message||'Done')+(r.errors&&r.errors.length?' | Errors: '+r.errors.join('; '):''),r.success);
+    await loadOrders();
+  }catch(e){showMsg('fetch-msg',e.message,false);}
+  btn.disabled=false;btn.innerHTML='📥 Fetch Emails';
+}
+async function loadOrders(){
+  orders=await fetch('/api/orders').then(r=>r.json());
+  const tbody=document.getElementById('order-tbody');
+  const card=document.getElementById('email-table-card');
+  const stats=document.getElementById('stats');
+  document.getElementById('dlCsvBtn').disabled=orders.length===0;
+  document.getElementById('order-count').textContent=orders.length+' rows';
+  if(orders.length===0){card.style.display='none';stats.style.display='none';return;}
+  card.style.display='block';stats.style.display='flex';
+  const cy=orders.filter(o=>routeLocal(o.client_order_number)==='rwportal').length;
+  const tr=orders.filter(o=>routeLocal(o.client_order_number)==='trusro').length;
+  document.getElementById('s-total').textContent=orders.length;
+  document.getElementById('s-cypress').textContent=cy;
+  document.getElementById('s-trusro').textContent=tr;
+  tbody.innerHTML=orders.map(o=>`<tr>
+    <td style="color:var(--muted);text-align:center">${o.sno}</td>
+    <td><b>${esc(o.client_order_number)}</b></td>
+    <td>${routeLocal(o.client_order_number)==='trusro'?'<span class="tag tag-t">TrueConcept</span>':'<span class="tag tag-c">Cypress</span>'}</td>
+    <td>${esc(o.street_address)}</td>
+    <td>${esc(o.zipcode)}</td>
+    <td>${esc(o.service_code)}</td>
+    <td>${esc(o.customer_id)}</td>
+    <td>${esc(o.borrower_name)}</td>
+    <td style="font-size:11px;color:var(--muted)">${esc(o._from)}</td>
+    <td><button class="btn btn-red btn-sm" onclick="delOrder(${o.id})">✕</button></td>
+  </tr>`).join('');
+}
+function routeLocal(fn){const f=(fn||'').toUpperCase();return(f.startsWith('TP')||f.startsWith('T'))?'trusro':'rwportal';}
+async function delOrder(id){await fetch('/api/orders/'+id,{method:'DELETE'});await loadOrders();}
+async function clearOrders(){if(!confirm('Clear all parsed orders?'))return;await fetch('/api/orders',{method:'DELETE'});await loadOrders();}
+function dlCsv(){window.location.href='/api/download-csv';}
+
+// ── Portal Lookup ─────────────────────────────────────────────────────────────
+let evtSource=null;
+async function startLookup(){
+  const btn=document.getElementById('runBtn');
+  btn.disabled=true;
+  document.getElementById('run-status').textContent='';
+  document.getElementById('results-card').style.display='none';
+  const logEl=document.getElementById('log');
+  logEl.innerHTML='';
+  addLog('Starting portal lookup…','info');
+
+  // Close old SSE
+  if(evtSource){evtSource.close();evtSource=null;}
+
+  // Open SSE stream
+  evtSource=new EventSource('/api/portal-lookup/progress');
+  evtSource.onmessage=function(e){
+    const d=JSON.parse(e.data);
+    if(d.type==='start'){addLog(`📋 ${d.total} file number(s) queued`,'info');}
+    else if(d.type==='progress'){
+      if(d.status==='searching') addLog(`🔍 [${d.portal}] Searching: ${d.fileNumber} (${d.index}/${d.total})…`,'info');
+      else if(d.status==='found') addLog(`✅ [${d.portal}] Found: ${d.fileNumber}`,'ok');
+      else if(d.status==='not_found') addLog(`⏭ [${d.portal}] Not found: ${d.fileNumber} — skipped`,'skip');
+      else if(d.status==='error') addLog(`❌ [${d.portal}] Error on ${d.fileNumber}: ${d.reason}`,'err');
+    }
+    else if(d.type==='done'){
+      addLog(`🏁 Done! Found ${d.found} record(s).`,'ok');
+      btn.disabled=false;
+      document.getElementById('run-status').textContent=`✅ ${d.found} found`;
+      if(d.found>0){
+        document.getElementById('dl-excel').href='/download/'+d.excel;
+        document.getElementById('dl-csv2').href='/download/'+d.csv;
+        loadResults();
+      }
+      evtSource.close();
+    }
+    else if(d.type==='error'){
+      addLog('❌ Fatal: '+d.message,'err');
+      btn.disabled=false;
+      evtSource.close();
+    }
+  };
+  evtSource.onerror=function(){addLog('SSE connection lost','err');btn.disabled=false;};
+
+  // Trigger the lookup
+  const r=await fetch('/api/portal-lookup',{method:'POST'}).then(r=>r.json());
+  if(!r.success){addLog('Error: '+r.message,'err');btn.disabled=false;if(evtSource)evtSource.close();}
+  else{document.getElementById('run-status').textContent=r.message;}
+}
+
+async function loadResults(){
+  const r=await fetch('/api/portal-lookup/results').then(x=>x.json());
+  const tbody=document.getElementById('res-tbody');
+  document.getElementById('res-count').textContent=r.results.length+' rows';
+  tbody.innerHTML=r.results.map((row,i)=>`<tr>
+    <td style="color:var(--muted);text-align:center">${i+1}</td>
+    <td><b>${esc(row.clientOrderNumber)}</b></td>
+    <td>${esc(row.streetAddress)}</td>
+    <td>${esc(row.zipcode)}</td>
+    <td>${esc(row.parcelNumber)}</td>
+    <td>${esc(row.serviceCode)}</td>
+    <td>${esc(row.customerId)}</td>
+    <td>${esc(row.borrowerName)}</td>
+  </tr>`).join('');
+  document.getElementById('results-card').style.display='block';
+}
+
+function addLog(msg,type){
+  const logEl=document.getElementById('log');
+  const line=document.createElement('div');
+  line.className='log-'+type;
+  line.textContent=new Date().toLocaleTimeString()+' '+msg;
+  logEl.appendChild(line);
+  logEl.scrollTop=logEl.scrollHeight;
+}
+
+// ── Downloads Tab ─────────────────────────────────────────────────────────────
+async function loadFiles(){
+  const el=document.getElementById('file-list');
+  const files=await fetch('/api/downloads').then(r=>r.json());
+  if(!files.length){el.innerHTML='<p style="color:var(--muted)">No files yet.</p>';return;}
+  el.innerHTML=files.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+    <span style="font-size:13px">${f.name}</span>
+    <a href="/download/${f.name}" class="btn btn-green btn-sm" style="text-decoration:none">⬇ Download</a>
+  </div>`).join('');
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showMsg(id,msg,ok,type){
+  const el=document.getElementById(id);
+  el.className='alert alert-'+(type||( ok?'ok':'err'));
+  el.textContent=msg;
+  if(type!=='info') setTimeout(()=>{el.textContent='';el.className='';},6000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('fetchDate').value=new Date().toISOString().split('T')[0];
+loadConfig();
+loadOrders();
+</script>
+</body>
+</html>

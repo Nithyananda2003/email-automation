@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: email-portal-automation
+    env: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: IMAP_HOST
+      - key: IMAP_PORT
+      - key: IMAP_ENCRYPTION
+      - key: IMAP_USER
+      - key: IMAP_PASS
+      - key: IMAP_FOLDER
+      - key: DEFAULT_CUSTOMER_ID
+      - key: DEFAULT_DELIVERY_EMAIL

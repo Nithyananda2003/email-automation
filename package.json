@@ -1,0 +1,24 @@
+{
+  "name": "email-portal-automation",
+  "version": "2.0.0",
+  "description": "Fetch order emails, extract file numbers, look up on portals, export to Excel/CSV",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "./render-build.sh"
+  },
+  "dependencies": {
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2",
+    "imapflow": "^1.0.162",
+    "mailparser": "^3.6.9",
+    "node-cron": "^3.0.3",
+    "puppeteer": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
